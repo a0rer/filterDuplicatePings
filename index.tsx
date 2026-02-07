@@ -5,9 +5,8 @@
  */
 
 import { ChatBarButton, ChatBarButtonFactory } from "@api/Chatbuttons";
-import { definePlugin } from "@utils/plugins";
+import definePlugin, { IconComponent, OptionType } from "@utils/types";
 import { definePluginSettings } from "@api/Settings";
-import { IconComponent } from "@utils/types";
 import { ComponentDispatch, DraftStore, DraftType, SelectedChannelStore, showToast, Toasts } from "webpack/common";
 
 interface MentionMatch {
@@ -16,14 +15,14 @@ interface MentionMatch {
   index: number;
 }
 
-// Options between splitting 2000-4000 characters
+// Options between splitting 2000-4000 characters in settings
 const settings = definePluginSettings({
-  messageLimit: {
+  enableAutoSplit: {
     type: OptionType.BOOLEAN,
     default: true,
     description: "Automatically split pings into groups when over the character limit"
   },
-  messageLimitLength: {
+  characterLimit: {
     type: OptionType.SELECT,
     description: "Switch between 2000-4000 Character word limit for nitro and non-nitro users",
     option: [
@@ -70,26 +69,27 @@ function deduplicatePings(text: string): { result: string; removedCount: number 
   const matches = extractMentions(text);
 
   if (matches.length === 0) {
-    return { return: text, removedCount: 0 };
+    return { result: text, removedCount: 0 };
   }
 
   const firstMentionIndex = matches[0].index;
   const prefix = text.substring(0, firstMentionIndex).trim();
 
   const seenUsers = new Map<string, string>();
-  const unqiueMentions: string[] = [];
+  const uniqueMentions: string[] = [];
 
   for (const match of matches) {
     if (!seenUsers.has(match.userId)) {
       seenUsers.set(match.userId, match.fullMatch);
-      unqiueMentions.push(match.fullMatch);
+      uniqueMentions.push(match.fullMatch);
     }
   }
-  const removedCount = matches.length - unqiueMentions.size;
-  const result = prefix + (prefix ? "\n\n" : "" + uniqueMentions.join(" ");
 
-  return { result, removedCount };
-}
+     const removedCount = matches.length - uniqueMentions.size;
+     const result = prefix + (prefix ? "\n\n" : "") + uniqueMentions.join(" ");
+
+     return { result, removedCount };
+ }
 
 function splitPingsIntoGroups(text: string): string {
   const matches = extractMentions(text);
@@ -159,21 +159,37 @@ function filterDuplicatePingsInChat() {
   const charLimit = settings.store.characterLimit;
   const shouldAutoSplit = settings.store.enableAutoSplit;
 
-  if (shouldAutoSplit && filteredText.length > charLimit) {
-    const splitText = splitPingsIntoGroups(filteredText);
-    setTextInChatBox(channelId, splitText);
-    showToast(
-           `Removed ${removedCount} duplicate${removedCount !== 1 ? "s" : ""} & split (${filteredText.length} > ${charLimit} chars)`,
-           Toasts.Type.SUCCESS
-       );
-       return;
-  }
+  // Only split if enabled AND exceeds limit
+     if (shouldAutoSplit && filteredText.length > charLimit) {
+         const splitText = splitPingsIntoGroups(filteredText);
+         setTextInChatBox(channelId, splitText);
+         showToast(
+             `Removed ${removedCount} duplicate${removedCount !== 1 ? "s" : ""} & split (${filteredText.length} > ${charLimit} chars)`,
+             Toasts.Type.SUCCESS
+         );
+         return;
+     }
 
-  showToast(
-          `Removed ${removedCount} duplicate ping${removedCount !== 1 ? "s" : ""}!`,
-          Toasts.Type.SUCCESS
-      );
+     // Just deduplicate without splitting
+     setTextInChatBox(channelId, filteredText);
+     showToast(
+         `Removed ${removedCount} duplicate ping${removedCount !== 1 ? "s" : ""}!`,
+         Toasts.Type.SUCCESS
+     );
 }
+
+const PingToolsButton: ChatBarButtonFactory = ({ isMainChat }) => {
+    if (!isMainChat) return null;
+
+    return (
+        <ChatBarButton
+            tooltip="Remove Duplicate Pings"
+            onClick={filterDuplicatePingsInChat}
+        >
+            <PingToolsIcon />
+        </ChatBarButton>
+    );
+};
 export default definePlugin({
   name: "FilterDuplicatePings",
   description: "Add a button to the chatbox for removing duplicate pings and splitting pings into groups",
