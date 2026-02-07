@@ -125,10 +125,13 @@ function splitPingsIntoGroups(text: string): string {
 }
 
 function setTextInChatBox(channelId: string, text: string) {
+  // Focus the textarea first
   ComponentDispatch.dispatchToLastSubscribed("TEXTAREA_FOCUS");
-  ComponentDispatch.dispatchToLastSubscribed("SELECT_ALL");
-  ComponentDispatch.dispatchToLastSubscribed("DELETE");
-
+  
+  // Clear all existing text
+  ComponentDispatch.dispatchToLastSubscribed("CLEAR_TEXT");
+  
+  // Insert the new text
   setTimeout(() => {
     insertTextIntoChatInputBox(text);
   }, 10);
