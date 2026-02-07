@@ -4,10 +4,11 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { ChatBarButton, ChatBarButtonFactory } from "@api/Chatbuttons";
+import { ChatBarButton, ChatBarButtonFactory } from "@api/ChatButtons";
 import definePlugin, { IconComponent, OptionType } from "@utils/types";
 import { definePluginSettings } from "@api/Settings";
-import { ComponentDispatch, DraftStore, DraftType, SelectedChannelStore, showToast, Toasts } from "webpack/common";
+import { insertTextIntoChatInputBox } from "@utils/discord";
+import { ComponentDispatch, DraftStore, DraftType, SelectedChannelStore, showToast, Toasts } from "@webpack/common";
 
 interface MentionMatch {
   fullMatch: string;
@@ -25,7 +26,7 @@ const settings = definePluginSettings({
   characterLimit: {
     type: OptionType.SELECT,
     description: "Switch between 2000-4000 Character word limit for nitro and non-nitro users",
-    option: [
+    options: [
       { label: "2000 Characters", value: 2000 },
       { label: "4000 Characters", value: 4000 }
     ],
@@ -85,7 +86,7 @@ function deduplicatePings(text: string): { result: string; removedCount: number 
     }
   }
 
-     const removedCount = matches.length - uniqueMentions.size;
+     const removedCount = matches.length - uniqueMentions.length;
      const result = prefix + (prefix ? "\n\n" : "") + uniqueMentions.join(" ");
 
      return { result, removedCount };
@@ -160,22 +161,22 @@ function filterDuplicatePingsInChat() {
   const shouldAutoSplit = settings.store.enableAutoSplit;
 
   // Only split if enabled AND exceeds limit
-     if (shouldAutoSplit && filteredText.length > charLimit) {
-         const splitText = splitPingsIntoGroups(filteredText);
-         setTextInChatBox(channelId, splitText);
-         showToast(
-             `Removed ${removedCount} duplicate${removedCount !== 1 ? "s" : ""} & split (${filteredText.length} > ${charLimit} chars)`,
-             Toasts.Type.SUCCESS
-         );
-         return;
-     }
+  if (shouldAutoSplit && filteredText.length > charLimit) {
+    const splitText = splitPingsIntoGroups(filteredText);
+    setTextInChatBox(channelId, splitText);
+    showToast(
+      `Removed ${removedCount} duplicate${removedCount !== 1 ? "s" : ""} & split (${filteredText.length} > ${charLimit} chars)`,
+      Toasts.Type.SUCCESS
+    );
+    return;
+  }
 
-     // Just deduplicate without splitting
-     setTextInChatBox(channelId, filteredText);
-     showToast(
-         `Removed ${removedCount} duplicate ping${removedCount !== 1 ? "s" : ""}!`,
-         Toasts.Type.SUCCESS
-     );
+  // Just deduplicate without splitting
+  setTextInChatBox(channelId, filteredText);
+  showToast(
+    `Removed ${removedCount} duplicate ping${removedCount !== 1 ? "s" : ""}!`,
+    Toasts.Type.SUCCESS
+  );
 }
 
 const PingToolsButton: ChatBarButtonFactory = ({ isMainChat }) => {
@@ -190,14 +191,15 @@ const PingToolsButton: ChatBarButtonFactory = ({ isMainChat }) => {
         </ChatBarButton>
     );
 };
+
 export default definePlugin({
   name: "FilterDuplicatePings",
   description: "Add a button to the chatbox for removing duplicate pings and splitting pings into groups",
-  author: [{ name: "aorer", id: "188165041336483842n" }],
+  authors: [{ name: "aorer", id: 188165041336483842n }],
 
   settings,
 
-  ChatBarButton: {
+  chatBarButton: {
     icon: PingToolsIcon,
     render: PingToolsButton
   }
