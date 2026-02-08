@@ -10,13 +10,6 @@ import { definePluginSettings } from "@api/Settings";
 import { insertTextIntoChatInputBox } from "@utils/discord";
 import { ComponentDispatch, DraftStore, DraftType, SelectedChannelStore, showToast, Toasts } from "@webpack/common";
 
-interface MentionMatch {
-  fullMatch: string;
-  userId: string;
-  index: number;
-}
-
-// Options between splitting 2000-4000 characters in settings
 const settings = definePluginSettings({
   enableAutoSplit: {
     type: OptionType.BOOLEAN,
@@ -27,14 +20,13 @@ const settings = definePluginSettings({
     type: OptionType.SELECT,
     description: "Switch between 2000-4000 Character word limit for nitro and non-nitro users",
     options: [
-      { label: "2000 Characters", value: 2000 },
-      { label: "4000 Characters", value: 4000 }
+      { label: "Non-Nitro (2000 Characters)", value: 2000 },
+      { label: "Nitro (4000 Characters)", value: 4000 }
     ],
     default: 2000
   }
 });
 
-// Add a visual FilterIcon to next to chatbar
 const PingToolsIcon: IconComponent = ({ height = 24, width = 24, className }) => (
     <svg
         width={width}
@@ -64,6 +56,12 @@ function extractMentions(text: string): MentionMatch[] {
     });
   }
   return matches;
+}
+
+interface MentionMatch {
+  fullMatch: string;
+  userId: string;
+  index: number;
 }
 
 function deduplicatePings(text: string): { result: string; removedCount: number } {
@@ -125,13 +123,9 @@ function splitPingsIntoGroups(text: string): string {
 }
 
 function setTextInChatBox(channelId: string, text: string) {
-  // Focus the textarea first
   ComponentDispatch.dispatchToLastSubscribed("TEXTAREA_FOCUS");
-  
-  // Clear all existing text
   ComponentDispatch.dispatchToLastSubscribed("CLEAR_TEXT");
-  
-  // Insert the new text
+
   setTimeout(() => {
     insertTextIntoChatInputBox(text);
   }, 10);
@@ -159,11 +153,9 @@ function filterDuplicatePingsInChat() {
     return;
   }
 
-  // Check if  splitting should be necessary
   const charLimit = settings.store.characterLimit;
   const shouldAutoSplit = settings.store.enableAutoSplit;
 
-  // Only split if enabled AND exceeds limit
   if (shouldAutoSplit && filteredText.length > charLimit) {
     const splitText = splitPingsIntoGroups(filteredText);
     setTextInChatBox(channelId, splitText);
