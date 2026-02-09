@@ -90,15 +90,15 @@ function deduplicatePings(text: string): { result: string; removedCount: number 
      return { result, removedCount };
  }
 
-function splitPingsIntoGroups(text: string): string {
+function splitPingsIntoGroups(text: string, limit: number): string {
   const matches = extractMentions(text);
 
   if (matches.length < 2) {
     return text;
   }
 
-  const FirstMentionIndex = matches[0].index;
-  const prefix = text.substring(0, FirstMentionIndex).trim();
+  const firstMentionIndex = matches[0].index;
+  const prefix = text.substring(0, firstMentionIndex).trim();
   const seenUsers = new Map<string, string>();
   const uniqueMentions: string[] = [];
 
@@ -109,17 +109,28 @@ function splitPingsIntoGroups(text: string): string {
     }
   }
 
-  const half = Math.ceil(uniqueMentions.length / 2);
-  const firstGroup = uniqueMentions.slice(0, half);
-  const secondGroup = uniqueMentions.slice(half);
+  const groups: string[][] = [];
+  let currentGroup: string[] = [];
+  let currentLength = prefix.length + (prefix ? 2 : 0);
 
-  let result = "";
-  if (prefix) result += prefix + "\n\n";
-  result += firstGroup.join(" ");
-  if (secondGroup.length > 0) {
-    result += "\n\n" + secondGroup.join(" ");
+  for (const mention of uniqueMentions) {
+    const mentionLength = mention.length + 1;
+
+    if (currentLength + mentionLength > limit && currentGroup.length > 0) {
+      groups.push(currentGroup);
+      currentGroup = [mention];
+      currentLength = mentionLength;
+    } else {
+      currentGroup.push(mention);
+      currentLength += mentionLength;
+    }
   }
-  return result;
+
+  if (currentGroup.length) groups.push(currentGroup);
+
+  return groups.map((g, i) =>
+    (i === 0 && prefix ? prefix + "\n\n" : "") + g.join(" ")
+  ).join("\n\n");
 }
 
 function setTextInChatBox(channelId: string, text: string) {
@@ -157,7 +168,7 @@ function filterDuplicatePingsInChat() {
   const shouldAutoSplit = settings.store.enableAutoSplit;
 
   if (shouldAutoSplit && filteredText.length > charLimit) {
-    const splitText = splitPingsIntoGroups(filteredText);
+    const splitText = splitPingsIntoGroups(filteredText, charLimit);
     setTextInChatBox(channelId, splitText);
     showToast(
       `Removed ${removedCount} duplicate${removedCount !== 1 ? "s" : ""} & split (${filteredText.length} > ${charLimit} chars)`,
