@@ -5,9 +5,9 @@
  */
 
 import { ChatBarButton, ChatBarButtonFactory } from "@api/ChatButtons";
-import definePlugin, { IconComponent, OptionType } from "@utils/types";
 import { definePluginSettings } from "@api/Settings";
 import { insertTextIntoChatInputBox } from "@utils/discord";
+import definePlugin, { IconComponent, OptionType } from "@utils/types";
 import { ComponentDispatch, DraftStore, DraftType, SelectedChannelStore, showToast } from "@webpack/common";
 
 const settings = definePluginSettings({
