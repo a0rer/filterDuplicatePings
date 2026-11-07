@@ -8,7 +8,7 @@ import { ChatBarButton, ChatBarButtonFactory } from "@api/ChatButtons";
 import definePlugin, { IconComponent, OptionType } from "@utils/types";
 import { definePluginSettings } from "@api/Settings";
 import { insertTextIntoChatInputBox } from "@utils/discord";
-import { ComponentDispatch, DraftStore, DraftType, SelectedChannelStore, showToast, Toasts } from "@webpack/common";
+import { ComponentDispatch, DraftStore, DraftType, SelectedChannelStore, showToast } from "@webpack/common";
 
 const settings = definePluginSettings({
   enableAutoSplit: {
@@ -20,10 +20,9 @@ const settings = definePluginSettings({
     type: OptionType.SELECT,
     description: "Switch between 2000-4000 Character word limit for nitro and non-nitro users",
     options: [
-      { label: "Non-Nitro (2000 Characters)", value: 2000 },
+      { label: "Non-Nitro (2000 Characters)", value: 2000, default: true },
       { label: "Nitro (4000 Characters)", value: 4000 }
-    ],
-    default: 2000
+    ]
   }
 });
 
@@ -147,20 +146,20 @@ function filterDuplicatePingsInChat() {
   const currentDraft = DraftStore.getDraft(channelId, DraftType.ChannelMessage);
 
   if (!currentDraft || currentDraft.trim().length === 0) {
-    showToast("No message to filter!", Toasts.Type.FAILURE);
+    showToast({ text: "No message to filter!", variant: "critical" });
     return;
   }
 
   const mentions = extractMentions(currentDraft);
   if (mentions.length === 0) {
-    showToast("No user mentions found in message!", Toasts.Type.FAILURE);
+    showToast({ text: "No user mentions found in message!", variant: "critical" });
     return;
   }
 
   const { result: filteredText, removedCount } = deduplicatePings(currentDraft);
 
   if (removedCount === 0) {
-    showToast("No duplicate pings found.", Toasts.Type.MESSAGE);
+    showToast({ text: "No duplicate pings found.", variant: "default" });
     return;
   }
 
@@ -170,19 +169,13 @@ function filterDuplicatePingsInChat() {
   if (shouldAutoSplit && filteredText.length > charLimit) {
     const splitText = splitPingsIntoGroups(filteredText, charLimit);
     setTextInChatBox(channelId, splitText);
-    showToast(
-      `Removed ${removedCount} duplicate${removedCount !== 1 ? "s" : ""} & split (${filteredText.length} > ${charLimit} chars)`,
-      Toasts.Type.SUCCESS
-    );
+    showToast({ text: `Removed ${removedCount} duplicate${removedCount !== 1 ? "s" : ""} & split (${filteredText.length} > ${charLimit} chars)`, variant: "success" });
     return;
   }
 
   // Just deduplicate without splitting
   setTextInChatBox(channelId, filteredText);
-  showToast(
-    `Removed ${removedCount} duplicate ping${removedCount !== 1 ? "s" : ""}!`,
-    Toasts.Type.SUCCESS
-  );
+  showToast({ text: `Removed ${removedCount} duplicate ping${removedCount !== 1 ? "s" : ""}!`, variant: "success" });
 }
 
 const PingToolsButton: ChatBarButtonFactory = ({ isMainChat }) => {
